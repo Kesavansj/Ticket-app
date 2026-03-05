@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from db import get_connection
-from ticket_model import (  # Fixed: import directly, not from models.ticket_model
+from ticket_model import (
     create_ticket,
     get_tickets_by_user,
     update_ticket,
@@ -37,7 +37,18 @@ def create():
 
 
 # =========================
-# READ
+# READ ALL (logged in user)
+# =========================
+@ticket_bp.route("/", methods=["GET"])
+@jwt_required()
+def read():
+    user_id = get_jwt_identity()
+    tickets = get_tickets_by_user(user_id)
+    return jsonify(tickets)
+
+
+# =========================
+# READ ONE
 # =========================
 @ticket_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
@@ -65,6 +76,36 @@ def get_one(id):
         "task": row[2],
         "description": row[3]
     })
+
+
+# =========================
+# READ ALL BY USER ID
+# =========================
+@ticket_bp.route("/user/<int:user_id>", methods=["GET"])
+@jwt_required()
+def get_tickets_by_user_id(user_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, name, task, description
+        FROM tickets
+        WHERE user_id = %s
+        ORDER BY id;
+    """, (user_id,))
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not rows:
+        return jsonify({"error": "No tickets found for this user"}), 404
+
+    tickets = [
+        {"id": r[0], "name": r[1], "task": r[2], "description": r[3]}
+        for r in rows
+    ]
+    return jsonify(tickets)
 
 
 # =========================
