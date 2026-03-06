@@ -12,7 +12,7 @@ ticket_bp = Blueprint("ticket_bp", __name__, url_prefix="/tickets")
 
 
 # =========================
-# CREATE
+# CREATE - token required
 # =========================
 @ticket_bp.route("/", methods=["POST"])
 @jwt_required()
@@ -37,39 +37,28 @@ def create():
 
 
 # =========================
-# READ ALL TICKETS
+# READ ALL - no token needed
 # =========================
 @ticket_bp.route("/", methods=["GET"])
-def read_all():
+def read():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT t.id, t.name, t.task, t.description, u.username
-        FROM tickets t
-        JOIN users u ON t.user_id = u.id
-        ORDER BY t.id;
-    """)
-
+    cur.execute("SELECT id, name, task, description FROM tickets ORDER BY id;")
     rows = cur.fetchall()
+
     cur.close()
     conn.close()
 
     tickets = [
-        {
-            "id": r[0],
-            "name": r[1],
-            "task": r[2],
-            "description": r[3],
-            "created_by": r[4]
-        }
+        {"id": r[0], "name": r[1], "task": r[2], "description": r[3]}
         for r in rows
     ]
     return jsonify(tickets)
 
 
 # =========================
-# READ ONE TICKET BY ID
+# READ ONE - no token needed
 # =========================
 @ticket_bp.route("/<int:id>", methods=["GET"])
 def get_one(id):
@@ -77,10 +66,8 @@ def get_one(id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT t.id, t.name, t.task, t.description, u.username
-        FROM tickets t
-        JOIN users u ON t.user_id = u.id
-        WHERE t.id = %s;
+        SELECT id, name, task, description
+        FROM tickets WHERE id = %s;
     """, (id,))
 
     row = cur.fetchone()
@@ -94,13 +81,12 @@ def get_one(id):
         "id": row[0],
         "name": row[1],
         "task": row[2],
-        "description": row[3],
-        "created_by": row[4]
+        "description": row[3]
     })
 
 
 # =========================
-# READ ALL TICKETS BY USER ID
+# READ BY USER - no token needed
 # =========================
 @ticket_bp.route("/user/<int:user_id>", methods=["GET"])
 def get_tickets_by_user_id(user_id):
@@ -108,11 +94,8 @@ def get_tickets_by_user_id(user_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT t.id, t.name, t.task, t.description, u.username
-        FROM tickets t
-        JOIN users u ON t.user_id = u.id
-        WHERE t.user_id = %s
-        ORDER BY t.id;
+        SELECT id, name, task, description
+        FROM tickets WHERE user_id = %s ORDER BY id;
     """, (user_id,))
 
     rows = cur.fetchall()
@@ -123,20 +106,14 @@ def get_tickets_by_user_id(user_id):
         return jsonify({"error": "No tickets found for this user"}), 404
 
     tickets = [
-        {
-            "id": r[0],
-            "name": r[1],
-            "task": r[2],
-            "description": r[3],
-            "created_by": r[4]
-        }
+        {"id": r[0], "name": r[1], "task": r[2], "description": r[3]}
         for r in rows
     ]
     return jsonify(tickets)
 
 
 # =========================
-# UPDATE
+# UPDATE - token required
 # =========================
 @ticket_bp.route("/<int:id>", methods=["PUT"])
 @jwt_required()
@@ -162,7 +139,7 @@ def update(id):
 
 
 # =========================
-# DELETE
+# DELETE - token required
 # =========================
 @ticket_bp.route("/<int:id>", methods=["DELETE"])
 @jwt_required()
