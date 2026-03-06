@@ -37,31 +37,51 @@ def create():
 
 
 # =========================
-# READ ALL (logged in user)
+# READ ALL TICKETS
 # =========================
 @ticket_bp.route("/", methods=["GET"])
-@jwt_required()
-def read():
-    user_id = get_jwt_identity()
-    tickets = get_tickets_by_user(user_id)
-    return jsonify(tickets)
-
-
-# =========================
-# READ ONE
-# =========================
-@ticket_bp.route("/<int:id>", methods=["GET"])
-@jwt_required()
-def get_one(id):
-    user_id = get_jwt_identity()
+def read_all():
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, name, task, description
-        FROM tickets
-        WHERE id = %s AND user_id = %s;
-    """, (id, user_id))
+        SELECT t.id, t.name, t.task, t.description, u.username
+        FROM tickets t
+        JOIN users u ON t.user_id = u.id
+        ORDER BY t.id;
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    tickets = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "task": r[2],
+            "description": r[3],
+            "created_by": r[4]
+        }
+        for r in rows
+    ]
+    return jsonify(tickets)
+
+
+# =========================
+# READ ONE TICKET BY ID
+# =========================
+@ticket_bp.route("/<int:id>", methods=["GET"])
+def get_one(id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT t.id, t.name, t.task, t.description, u.username
+        FROM tickets t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.id = %s;
+    """, (id,))
 
     row = cur.fetchone()
     cur.close()
@@ -74,24 +94,25 @@ def get_one(id):
         "id": row[0],
         "name": row[1],
         "task": row[2],
-        "description": row[3]
+        "description": row[3],
+        "created_by": row[4]
     })
 
 
 # =========================
-# READ ALL BY USER ID
+# READ ALL TICKETS BY USER ID
 # =========================
 @ticket_bp.route("/user/<int:user_id>", methods=["GET"])
-@jwt_required()
 def get_tickets_by_user_id(user_id):
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, name, task, description
-        FROM tickets
-        WHERE user_id = %s
-        ORDER BY id;
+        SELECT t.id, t.name, t.task, t.description, u.username
+        FROM tickets t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.user_id = %s
+        ORDER BY t.id;
     """, (user_id,))
 
     rows = cur.fetchall()
@@ -102,7 +123,13 @@ def get_tickets_by_user_id(user_id):
         return jsonify({"error": "No tickets found for this user"}), 404
 
     tickets = [
-        {"id": r[0], "name": r[1], "task": r[2], "description": r[3]}
+        {
+            "id": r[0],
+            "name": r[1],
+            "task": r[2],
+            "description": r[3],
+            "created_by": r[4]
+        }
         for r in rows
     ]
     return jsonify(tickets)
