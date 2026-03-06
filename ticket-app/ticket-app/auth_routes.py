@@ -10,9 +10,6 @@ def test():
     return jsonify({"message": "Auth blueprint working"})
 
 
-# =========================
-# REGISTER
-# =========================
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.json
@@ -45,9 +42,6 @@ def register():
     return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
 
 
-# =========================
-# LOGIN
-# =========================
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -73,27 +67,7 @@ def login():
     return jsonify({"access_token": access_token})
 
 
-# =========================
-# GET ALL USERS
-# =========================
-@auth_bp.route("/users", methods=["GET"])
-def get_all_users():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id, username FROM users ORDER BY id;")
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    users = [{"id": r[0], "username": r[1]} for r in rows]
-    return jsonify(users)
-
-
-# =========================
-# GET PARTICULAR USER
-# =========================
+# No token required - public route
 @auth_bp.route("/user/<int:id>", methods=["GET"])
 def get_user(id):
     conn = get_connection()
@@ -112,3 +86,19 @@ def get_user(id):
         "id": row[0],
         "username": row[1]
     })
+
+
+# No token required - public route
+@auth_bp.route("/users", methods=["GET"])
+def get_all_users():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id, username FROM users ORDER BY id;")
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    users = [{"id": r[0], "username": r[1]} for r in rows]
+    return jsonify(users)
